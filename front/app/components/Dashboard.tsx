@@ -13,15 +13,52 @@ export default function Dashboard() {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isTyping, setIsTyping] = useState(false);
-    const [showHelp, setshowHelp] = useState(true);
+    const [showHelp, setshowHelp] = useState(false);
+    const [chatList, setChatList] = useState<any[]>([]);
+    const [activeChatId, setActiveChatId] = useState<number | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const typingIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const router = useRouter();
 
     useEffect(() => {
+        fetchChats();
         inputRef.current?.focus();
     }, []);
+
+    const fetchChats = async () => {
+        try {
+            const res = await fetch("http://localhost:5000/api/chat/chats", {
+                method: "GET",
+                credentials: "include"
+            });
+            const data = await res.json();
+            setChatList(data.chats);
+        } catch (err) {
+            console.error("Failed to fetch chats:", err);
+        }
+    };
+
+    const loadChatMessages = async (chatId: number) => {
+        try {
+            const res = await fetch(`http://localhost:5000/api/chat/chat/${chatId}`, {
+                credentials: "include"
+            });
+            const data = await res.json();
+            setMessages(data.messages.map((m: any) => ({ sender: m.sender, text: m.content })));
+            setActiveChatId(chatId);
+            setshowHelp(false);
+        } catch (err) {
+            console.error("Failed to load chat messages:", err);
+        }
+    };
+
+    const startNewChat = () => {
+        setMessages([]);
+        setActiveChatId(null);
+        setInput('');
+        setshowHelp(true);
+    };
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -45,16 +82,15 @@ export default function Dashboard() {
                 break;
             case '/about':
                 setMessages([...messages, { sender: 'bot', text: 'This is a chatbot application.' }]);
+                setshowHelp(false);
                 break;
             case '/logout':
                 document.cookie = 'authToken=; Max-Age=0; path=/;';
-                setTimeout(()=>{
-                    window.location.reload();
-                },100);
-                console.log('Logout command received');
+                setTimeout(() => window.location.reload(), 100);
                 break;
             default:
                 setMessages([...messages, { sender: 'bot', text: 'Type a valid command.' }]);
+                setshowHelp(false);
         }
     };
 
@@ -78,18 +114,19 @@ export default function Dashboard() {
         try {
             const res = await fetch('http://localhost:5000/api/chat/message', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({
                     message: input,
+                    conversationId: activeChatId,
                     history: updatedMessages.map(msg => ({ role: msg.sender === 'user' ? 'user' : 'assistant', content: msg.text }))
                 }),
             });
             const data = await res.json();
             const botMessage = { sender: 'bot', text: data.response };
+            setActiveChatId(data.conversationId);
             simulateTypingEffect(botMessage, updatedMessages);
+            fetchChats();
         } catch (error) {
             console.error('Error sending message:', error);
             setIsLoading(false);
@@ -137,8 +174,26 @@ export default function Dashboard() {
     };
 
     return (
-        <div className="fixed inset-0 flex flex-col items-center bg-gradient-to-br from-gray-900 to-black">
-            <div className="w-full h-screen max-w-5xl flex flex-col relative z-10 p-4">
+        <div className="fixed inset-0 flex bg-gradient-to-br from-gray-900 to-black">
+            <div className="w-64 bg-black/80 p-4 text-white overflow-y-auto border-r border-gray-800">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-bold">Chats</h2>
+                    <button onClick={startNewChat} className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-2 py-1 rounded">+ New Chat</button>
+                </div>
+                <ul className="space-y-2">
+                    {chatList.map(chat => (
+                        <li key={chat.conversationId}>
+                            <button
+                                className={`w-full text-left p-2 rounded-md hover:bg-gray-700 ${activeChatId === chat.conversationId ? 'bg-gray-700' : ''}`}
+                                onClick={() => loadChatMessages(chat.conversationId)}
+                            >
+                                {chat.title || `Chat ${chat.conversationId}`}
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+            <div className="flex-1 h-screen flex flex-col p-4">
                 <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-800/80 to-gray-900/80 backdrop-blur-xl rounded-2xl shadow-lg mb-4 scrollbar-custom">
                     <AnimatePresence>
                         {showHelp && (
