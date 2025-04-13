@@ -4,6 +4,7 @@ import { FaStop } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaRobot } from 'react-icons/fa';
 import { BsPersonCircle } from 'react-icons/bs';
+import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { useRouter } from "next/navigation";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -16,6 +17,7 @@ export default function Dashboard() {
     const [showHelp, setshowHelp] = useState(false);
     const [chatList, setChatList] = useState<any[]>([]);
     const [activeChatId, setActiveChatId] = useState<number | null>(null);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // State for sidebar collapse
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const typingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -58,6 +60,43 @@ export default function Dashboard() {
         setActiveChatId(null);
         setInput('');
         setshowHelp(true);
+    };
+
+    const renameChat = async (chatId: number, newTitle: string) => {
+        try {
+            const res = await fetch(`http://localhost:5000/api/chat/rename/${chatId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ title: newTitle }),
+            });
+            if (res.ok) {
+                fetchChats(); // Refresh the chat list
+            } else {
+                console.error("Failed to rename chat");
+            }
+        } catch (err) {
+            console.error("Error renaming chat:", err);
+        }
+    };
+
+    const deleteChat = async (chatId: number) => {
+        try {
+            const res = await fetch(`http://localhost:5000/api/chat/delete/${chatId}`, {
+                method: "DELETE",
+                credentials: "include",
+            });
+            if (res.ok) {
+                fetchChats(); // Refresh the chat list
+                if (activeChatId === chatId) {
+                    startNewChat(); // Reset the active chat if it was deleted
+                }
+            } else {
+                console.error("Failed to delete chat");
+            }
+        } catch (err) {
+            console.error("Error deleting chat:", err);
+        }
     };
 
     const scrollToBottom = () => {
@@ -175,24 +214,71 @@ export default function Dashboard() {
 
     return (
         <div className="fixed inset-0 flex bg-gradient-to-br from-gray-900 to-black">
-            <div className="w-64 bg-black/80 p-4 text-white overflow-y-auto border-r border-gray-800">
+            {/* Sidebar */}
+            <div
+                className={`transition-all duration-300 ${
+                    isSidebarCollapsed ? 'w-16' : 'w-64'
+                } bg-black/80 p-4 text-white overflow-y-auto border-r border-gray-800`}
+            >
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-bold">Chats</h2>
-                    <button onClick={startNewChat} className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-2 py-1 rounded">+ New Chat</button>
+                    {!isSidebarCollapsed && <h2 className="text-lg font-bold">Chats</h2>}
+                    <button
+                        onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                        className="text-white hover:text-gray-400"
+                    >
+                        {isSidebarCollapsed ? <FiChevronRight /> : <FiChevronLeft />}
+                    </button>
                 </div>
-                <ul className="space-y-2">
-                    {chatList.map(chat => (
-                        <li key={chat.conversationId}>
-                            <button
-                                className={`w-full text-left p-2 rounded-md hover:bg-gray-700 ${activeChatId === chat.conversationId ? 'bg-gray-700' : ''}`}
-                                onClick={() => loadChatMessages(chat.conversationId)}
-                            >
-                                {chat.title || `Chat ${chat.conversationId}`}
-                            </button>
-                        </li>
-                    ))}
-                </ul>
+                {!isSidebarCollapsed && (
+                    <div>
+                        <button
+                            onClick={startNewChat}
+                            className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-2 py-1 rounded w-full mb-4"
+                        >
+                            + New Chat
+                        </button>
+                        <ul className="space-y-2">
+                            {chatList.map(chat => (
+                                <li key={chat.conversationId} className="flex items-center justify-between">
+                                    <button
+                                        className={`flex-1 text-left p-2 rounded-md hover:bg-gray-700 ${
+                                            activeChatId === chat.conversationId ? 'bg-gray-700' : ''
+                                        }`}
+                                        onClick={() => loadChatMessages(chat.conversationId)}
+                                    >
+                                        {chat.title || `Chat ${chat.conversationId}`}
+                                    </button>
+                                    <div className="flex gap-2 ml-2">
+                                        <button
+                                            onClick={() => {
+                                                const newTitle = prompt("Enter new title for the chat:", chat.title || `Chat ${chat.conversationId}`);
+                                                if (newTitle) renameChat(chat.conversationId, newTitle);
+                                            }}
+                                            className="text-yellow-400 hover:text-yellow-500"
+                                            title="Rename Chat"
+                                        >
+                                            ✏️
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                if (confirm("Are you sure you want to delete this chat?")) {
+                                                    deleteChat(chat.conversationId);
+                                                }
+                                            }}
+                                            className="text-red-400 hover:text-red-500"
+                                            title="Delete Chat"
+                                        >
+                                            🗑️
+                                        </button>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
             </div>
+
+            {/* Chat Area */}
             <div className="flex-1 h-screen flex flex-col p-4">
                 <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-800/80 to-gray-900/80 backdrop-blur-xl rounded-2xl shadow-lg mb-4 scrollbar-custom">
                     <AnimatePresence>

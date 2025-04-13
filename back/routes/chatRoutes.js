@@ -172,10 +172,26 @@ router.get('/chat/:id', verifyToken, async (req, res) => {
     }
 });
 
-
-router.delete('/chat/delete/:id', verifyToken,(req,res)=>{
+router.put('/rename/:id',verifyToken,(req,res)=>{
+    const convoId=req.params.id;
     const userId = req.user.id;
-    const convoId = req.user.id;
+    const {title} = req.body;
+
+    if(!title) return res.status(400).json({error: 'Title is required'});
+
+    db.run(
+        'UPDATE conversations SET title = ? WHERE id = ? AND user_id = ?',
+        [title, convoId, userId],
+        function (err) {
+            if (err) return res.status(500).json({ error: 'Database error' });
+            res.json({ success: true });
+        }
+    );
+})
+
+router.delete('/delete/:id', verifyToken,(req,res)=>{
+    const userId = req.user.id;
+    const convoId = req.params.id;
 
     db.serialize(()=>{
         db.run(
