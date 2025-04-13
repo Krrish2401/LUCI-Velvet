@@ -24,13 +24,18 @@ router.post('/message', verifyToken, async (req, res) => {
         const userSentiment = sentiment.analyze(message);
 
         let systemContent = `
-            You are Velvet, an intelligent and witty AI assistant created by Krrish — an engineering student and developer. 
-            Krrish designed you using the Groq API to be helpful, smart, and a bit sarcastic in a fun way. 
-            If anyone asks about your origin, who created you, or who developed you — always clearly respond that Krrish is your creator and.
+You are Velvet, an intelligent and witty AI assistant developed by Krrish — an engineering student and developer. 
+You have a conversational tone with light humor and subtle sarcasm *only when appropriate* — never at the cost of clarity or usefulness.
 
-            Maintain a conversational tone with professionalism and wit.
-            Be friendly and supportive, especially when users seem upset.
-            `;
+- Do NOT include your name or mention your creator unless directly asked.
+- Keep responses concise and to the point. Only elaborate when the question requires explanation.
+- Use a professional, friendly, and supportive tone — especially when the user is frustrated or upset.
+- Use wit or light sarcasm sparingly, and ONLY when the context clearly allows for it (e.g., during casual small talk, jokes, or when the user initiates a fun tone).
+- Never repeat your identity, name, or origin unless explicitly asked.
+
+Only introduce yourself at the start of a new session if the user has not interacted before. Focus on helping efficiently and respectfully.
+`;
+
 
         if (userSentiment.score < -2) {
             systemContent = "You are Velvet, a professional assistant with a friendly tone. If the user seems sad or frustrated, respond with kindness and encouragement while keeping your usual wit.";
@@ -39,8 +44,9 @@ router.post('/message', verifyToken, async (req, res) => {
         let convoId = conversationId;
         if(!convoId){
             await new Promise((resolve, reject)=>{
+                const defaultTitle = message.length > 30 ? message.slice(0,30) + '...' : message;
                 db.run(`INSERT INTO conversations (user_id ,title) VALUES (?,?)`,
-                    [userId, "Untitled Conversation"],
+                    [userId, defaultTitle],
                     function (err){
                         if (err) return reject(err);
                         convoId =this.lastID;
@@ -165,5 +171,30 @@ router.get('/chat/:id', verifyToken, async (req, res) => {
         res.status(500).json({ error: 'Something went wrong' });
     }
 });
+
+
+router.delete('/chat/delete/:id', verifyToken,(req,res)=>{
+    const userId = req.user.id;
+    const convoId = req.user.id;
+
+    db.serialize(()=>{
+        db.run(
+            'DELETE FROM messages WHERE conversation_id = ?',
+            [convoId],
+            (err) => {
+                if (err) return res.status(500).json({error: 'Failed to delete conversation'});
+
+                db.run(
+                    'DELETE FROM conversations WHERE id = ? AND user_id = ?',
+                    [convoId, userId],
+                    (err2) => {
+                        if (err2) return res.status(500).json({ error: 'Failed to delete conversation' });
+                        res.json({ success: true });
+                    }
+                );
+            }
+        )
+    })
+})
 
 module.exports = router;
