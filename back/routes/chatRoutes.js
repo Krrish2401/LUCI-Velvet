@@ -121,12 +121,12 @@ router.get('/chats', verifyToken, async (req, res) => {
     try {
         db.all(
             `
-            SELECT c.id AS conversationId, c.title, MAX(m.timestamp) AS last_updated
+            SELECT c.id AS conversationId, c.title, c.pinned, MAX(m.timestamp) AS last_updated
             FROM conversations c
             LEFT JOIN messages m ON c.id = m.conversation_id
             WHERE c.user_id = ?
             GROUP BY c.id
-            ORDER BY last_updated DESC
+            ORDER BY c.pinned DESC, last_updated DESC
             `,
             [userId],
             (err, rows) => {
@@ -142,7 +142,6 @@ router.get('/chats', verifyToken, async (req, res) => {
         res.status(500).json({ error: 'Something went wrong' });
     }
 });
-
 
 router.get('/chat/:id', verifyToken, async (req, res) => {
     const convoId = req.params.id;
@@ -172,10 +171,48 @@ router.get('/chat/:id', verifyToken, async (req, res) => {
     }
 });
 
-
-router.delete('/chat/delete/:id', verifyToken,(req,res)=>{
+router.put('/rename/:id',verifyToken,(req,res)=>{
+    const convoId=req.params.id;
     const userId = req.user.id;
-    const convoId = req.user.id;
+    const {title} = req.body;
+
+    if(!title) return res.status(400).json({error: 'Title is required'});
+
+    db.run(
+        'UPDATE conversations SET title = ? WHERE id = ? AND user_id = ?',
+        [title, convoId, userId],
+        function (err) {
+            if (err) return res.status(500).json({ error: 'Database error' });
+            res.json({ success: true });
+        }
+    );
+})
+
+router.put('/pin/:id', verifyToken, (req, res) => {
+    const convoId = req.params.id;
+    const userId = req.user.id;
+    const { pinned } = req.body;
+
+    if (typeof pinned !== 'boolean') {
+        return res.status(400).json({ error: 'Pinned state must be a boolean' });
+    }
+
+    db.run(
+        'UPDATE conversations SET pinned = ? WHERE id = ? AND user_id = ?',
+        [pinned, convoId, userId],
+        function (err) {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            res.json({ success: true, pinned });
+        }
+    );
+});
+
+router.delete('/delete/:id', verifyToken,(req,res)=>{
+    const userId = req.user.id;
+    const convoId = req.params.id;
 
     db.serialize(()=>{
         db.run(

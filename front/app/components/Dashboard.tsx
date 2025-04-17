@@ -4,7 +4,7 @@ import { FaStop } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaRobot } from 'react-icons/fa';
 import { BsPersonCircle } from 'react-icons/bs';
-import { useRouter } from "next/navigation";
+import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -16,10 +16,10 @@ export default function Dashboard() {
     const [showHelp, setshowHelp] = useState(false);
     const [chatList, setChatList] = useState<any[]>([]);
     const [activeChatId, setActiveChatId] = useState<number | null>(null);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // State for sidebar collapse
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const typingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const router = useRouter();
 
     useEffect(() => {
         fetchChats();
@@ -33,9 +33,39 @@ export default function Dashboard() {
                 credentials: "include"
             });
             const data = await res.json();
+            const chatsWithPinned = data.chats.map((chat: any)=>({
+                ...chat,
+                pinned : chat.pinned || false,
+            }));
             setChatList(data.chats);
         } catch (err) {
             console.error("Failed to fetch chats:", err);
+        }
+    };
+
+    const togglePinChat = async (chatId: number) => {
+        const chat = chatList.find(chat => chat.conversationId === chatId);
+        if (!chat) return;
+    
+        const newPinnedState = !chat.pinned;
+    
+        try {
+            await fetch(`http://localhost:5000/api/chat/pin/${chatId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ pinned: newPinnedState }),
+            });
+    
+            const updatedChatList = chatList.map(chat =>
+                chat.conversationId === chatId ? { ...chat, pinned: newPinnedState } : chat
+            );
+    
+            // Sort chats: pinned chats first
+            const sortedChatList = updatedChatList.sort((a, b) => b.pinned - a.pinned);
+            setChatList(sortedChatList);
+        } catch (err) {
+            console.error('Failed to toggle pin state:', err);
         }
     };
 
@@ -58,6 +88,43 @@ export default function Dashboard() {
         setActiveChatId(null);
         setInput('');
         setshowHelp(true);
+    };
+
+    const renameChat = async (chatId: number, newTitle: string) => {
+        try {
+            const res = await fetch(`http://localhost:5000/api/chat/rename/${chatId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ title: newTitle }),
+            });
+            if (res.ok) {
+                fetchChats(); // Refresh the chat list
+            } else {
+                console.error("Failed to rename chat");
+            }
+        } catch (err) {
+            console.error("Error renaming chat:", err);
+        }
+    };
+
+    const deleteChat = async (chatId: number) => {
+        try {
+            const res = await fetch(`http://localhost:5000/api/chat/delete/${chatId}`, {
+                method: "DELETE",
+                credentials: "include",
+            });
+            if (res.ok) {
+                fetchChats(); // Refresh the chat list
+                if (activeChatId === chatId) {
+                    startNewChat(); // Reset the active chat if it was deleted
+                }
+            } else {
+                console.error("Failed to delete chat");
+            }
+        } catch (err) {
+            console.error("Error deleting chat:", err);
+        }
     };
 
     const scrollToBottom = () => {
@@ -175,24 +242,102 @@ export default function Dashboard() {
 
     return (
         <div className="fixed inset-0 flex bg-gradient-to-br from-gray-900 to-black">
-            <div className="w-64 bg-black/80 p-4 text-white overflow-y-auto border-r border-gray-800">
+            {/* Sidebar */}
+            <motion.div
+                initial={{ x: -300 }}
+                animate={{ x: isSidebarCollapsed ? -240 : 0 }}
+                transition={{ type: "tween", duration: 0.6, ease: "easeInOut" }}
+                className={`transition-all duration-300 ${
+                    isSidebarCollapsed ? 'w-16' : 'w-64'
+                } bg-gradient-to-b from-gray-800/90 to-gray-900/90 p-4 text-white overflow-y-auto border-r border-gray-700 shadow-lg`}
+            >
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-bold">Chats</h2>
-                    <button onClick={startNewChat} className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-2 py-1 rounded">+ New Chat</button>
+                    {!isSidebarCollapsed && (
+                        <motion.h2
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.3 }}
+                            className="text-lg font-bold text-gray-300"
+                        >
+                            Chats
+                        </motion.h2>
+                    )}
+                    <button
+                        onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                        className="text-gray-300 hover:text-gray-400 transition-colors"
+                    >
+                        {isSidebarCollapsed ? <FiChevronRight /> : <FiChevronLeft />}
+                    </button>
                 </div>
-                <ul className="space-y-2">
-                    {chatList.map(chat => (
-                        <li key={chat.conversationId}>
-                            <button
-                                className={`w-full text-left p-2 rounded-md hover:bg-gray-700 ${activeChatId === chat.conversationId ? 'bg-gray-700' : ''}`}
-                                onClick={() => loadChatMessages(chat.conversationId)}
-                            >
-                                {chat.title || `Chat ${chat.conversationId}`}
-                            </button>
-                        </li>
-                    ))}
-                </ul>
-            </div>
+                {!isSidebarCollapsed && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        <button
+                            onClick={startNewChat}
+                            className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-2 py-1 rounded w-full mb-4 transition-transform transform hover:scale-105"
+                        >
+                            + New Chat
+                        </button>
+                        <ul className="space-y-2">
+                            {chatList.map(chat => (
+                                <motion.li
+                                    key={chat.conversationId}
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ duration: 0.3, delay: chat.conversationId * 0.05 }}
+                                    className="flex items-center justify-between"
+                                >
+                                    <button
+                                        className={`flex-1 text-left p-2 rounded-md hover:bg-gray-700 transition-colors ${
+                                            activeChatId === chat.conversationId ? 'bg-gray-700' : ''
+                                        }`}
+                                        onClick={() => loadChatMessages(chat.conversationId)}
+                                    >
+                                        {chat.title || `Chat ${chat.conversationId}`}
+                                    </button>
+                                    <div className="flex gap-2 ml-2">
+                                        <button
+                                            onClick={() => {
+                                                const newTitle = prompt("Enter new title for the chat:", chat.title || `Chat ${chat.conversationId}`);
+                                                if (newTitle) renameChat(chat.conversationId, newTitle);
+                                            }}
+                                            className="text-yellow-400 hover:text-yellow-500 transition-transform transform hover:scale-110"
+                                            title="Rename Chat"
+                                        >
+                                            ✏️
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                if (confirm("Are you sure you want to delete this chat?")) {
+                                                    deleteChat(chat.conversationId);
+                                                }
+                                            }}
+                                            className="text-red-400 hover:text-red-500 transition-transform transform hover:scale-110"
+                                            title="Delete Chat"
+                                        >
+                                            🗑️
+                                        </button>
+                                        <button
+                                            onClick={() => togglePinChat(chat.conversationId)}
+                                            className={`${
+                                                chat.pinned ? 'text-green-400 hover:text-green-500' : 'text-gray-400 hover:text-gray-500'
+                                            } transition-transform transform hover:scale-110`}
+                                            title={chat.pinned ? "Unpin Chat" : "Pin Chat"}
+                                        >
+                                            📌
+                                        </button>
+                                    </div>
+                                </motion.li>
+                            ))}
+                        </ul>
+                    </motion.div>
+                )}
+            </motion.div>
+
+            {/* Chat Area */}
             <div className="flex-1 h-screen flex flex-col p-4">
                 <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-800/80 to-gray-900/80 backdrop-blur-xl rounded-2xl shadow-lg mb-4 scrollbar-custom">
                     <AnimatePresence>
@@ -200,7 +345,7 @@ export default function Dashboard() {
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 0.6 }}
-                                exit={{ opacity: 0 }}
+                                exit={{ opacity: 0 }}  
                                 className="absolute inset-0 flex items-center justify-center text-gray-300 text-lg text-center pointer-events-none"
                             >
                                 <div className='font-bold'>
