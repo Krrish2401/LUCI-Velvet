@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaRobot } from 'react-icons/fa';
 import { BsPersonCircle } from 'react-icons/bs';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
-import { useRouter } from "next/navigation";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -21,7 +20,6 @@ export default function Dashboard() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const typingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const router = useRouter();
 
     useEffect(() => {
         fetchChats();
@@ -35,9 +33,39 @@ export default function Dashboard() {
                 credentials: "include"
             });
             const data = await res.json();
+            const chatsWithPinned = data.chats.map((chat: any)=>({
+                ...chat,
+                pinned : chat.pinned || false,
+            }));
             setChatList(data.chats);
         } catch (err) {
             console.error("Failed to fetch chats:", err);
+        }
+    };
+
+    const togglePinChat = async (chatId: number) => {
+        const chat = chatList.find(chat => chat.conversationId === chatId);
+        if (!chat) return;
+    
+        const newPinnedState = !chat.pinned;
+    
+        try {
+            await fetch(`http://localhost:5000/api/chat/pin/${chatId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ pinned: newPinnedState }),
+            });
+    
+            const updatedChatList = chatList.map(chat =>
+                chat.conversationId === chatId ? { ...chat, pinned: newPinnedState } : chat
+            );
+    
+            // Sort chats: pinned chats first
+            const sortedChatList = updatedChatList.sort((a, b) => b.pinned - a.pinned);
+            setChatList(sortedChatList);
+        } catch (err) {
+            console.error('Failed to toggle pin state:', err);
         }
     };
 
@@ -215,33 +243,55 @@ export default function Dashboard() {
     return (
         <div className="fixed inset-0 flex bg-gradient-to-br from-gray-900 to-black">
             {/* Sidebar */}
-            <div
+            <motion.div
+                initial={{ x: -300 }}
+                animate={{ x: isSidebarCollapsed ? -240 : 0 }}
+                transition={{ type: "tween", duration: 0.6, ease: "easeInOut" }}
                 className={`transition-all duration-300 ${
                     isSidebarCollapsed ? 'w-16' : 'w-64'
-                } bg-black/80 p-4 text-white overflow-y-auto border-r border-gray-800`}
+                } bg-gradient-to-b from-gray-800/90 to-gray-900/90 p-4 text-white overflow-y-auto border-r border-gray-700 shadow-lg`}
             >
                 <div className="flex justify-between items-center mb-4">
-                    {!isSidebarCollapsed && <h2 className="text-lg font-bold">Chats</h2>}
+                    {!isSidebarCollapsed && (
+                        <motion.h2
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.3 }}
+                            className="text-lg font-bold text-gray-300"
+                        >
+                            Chats
+                        </motion.h2>
+                    )}
                     <button
                         onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                        className="text-white hover:text-gray-400"
+                        className="text-gray-300 hover:text-gray-400 transition-colors"
                     >
                         {isSidebarCollapsed ? <FiChevronRight /> : <FiChevronLeft />}
                     </button>
                 </div>
                 {!isSidebarCollapsed && (
-                    <div>
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3 }}
+                    >
                         <button
                             onClick={startNewChat}
-                            className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-2 py-1 rounded w-full mb-4"
+                            className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-2 py-1 rounded w-full mb-4 transition-transform transform hover:scale-105"
                         >
                             + New Chat
                         </button>
                         <ul className="space-y-2">
                             {chatList.map(chat => (
-                                <li key={chat.conversationId} className="flex items-center justify-between">
+                                <motion.li
+                                    key={chat.conversationId}
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ duration: 0.3, delay: chat.conversationId * 0.05 }}
+                                    className="flex items-center justify-between"
+                                >
                                     <button
-                                        className={`flex-1 text-left p-2 rounded-md hover:bg-gray-700 ${
+                                        className={`flex-1 text-left p-2 rounded-md hover:bg-gray-700 transition-colors ${
                                             activeChatId === chat.conversationId ? 'bg-gray-700' : ''
                                         }`}
                                         onClick={() => loadChatMessages(chat.conversationId)}
@@ -254,7 +304,7 @@ export default function Dashboard() {
                                                 const newTitle = prompt("Enter new title for the chat:", chat.title || `Chat ${chat.conversationId}`);
                                                 if (newTitle) renameChat(chat.conversationId, newTitle);
                                             }}
-                                            className="text-yellow-400 hover:text-yellow-500"
+                                            className="text-yellow-400 hover:text-yellow-500 transition-transform transform hover:scale-110"
                                             title="Rename Chat"
                                         >
                                             ✏️
@@ -265,18 +315,27 @@ export default function Dashboard() {
                                                     deleteChat(chat.conversationId);
                                                 }
                                             }}
-                                            className="text-red-400 hover:text-red-500"
+                                            className="text-red-400 hover:text-red-500 transition-transform transform hover:scale-110"
                                             title="Delete Chat"
                                         >
                                             🗑️
                                         </button>
+                                        <button
+                                            onClick={() => togglePinChat(chat.conversationId)}
+                                            className={`${
+                                                chat.pinned ? 'text-green-400 hover:text-green-500' : 'text-gray-400 hover:text-gray-500'
+                                            } transition-transform transform hover:scale-110`}
+                                            title={chat.pinned ? "Unpin Chat" : "Pin Chat"}
+                                        >
+                                            📌
+                                        </button>
                                     </div>
-                                </li>
+                                </motion.li>
                             ))}
                         </ul>
-                    </div>
+                    </motion.div>
                 )}
-            </div>
+            </motion.div>
 
             {/* Chat Area */}
             <div className="flex-1 h-screen flex flex-col p-4">
@@ -286,7 +345,7 @@ export default function Dashboard() {
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 0.6 }}
-                                exit={{ opacity: 0 }}
+                                exit={{ opacity: 0 }}  
                                 className="absolute inset-0 flex items-center justify-center text-gray-300 text-lg text-center pointer-events-none"
                             >
                                 <div className='font-bold'>
