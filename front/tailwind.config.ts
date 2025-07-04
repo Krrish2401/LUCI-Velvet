@@ -17,7 +17,7 @@ const config: Config = {
         'blob': 'blob 7s infinite',
         'shake': 'shake 0.5s ease-in-out',
         'bounce': 'bounce 3s infinite',
-        'fade-in': 'fadeIn 0.8s ease-in-out forwards',
+        // 'fade-in': 'fadeIn 0.8s ease-in-out forwards',
       },
       keyframes: {
         bounce: {
@@ -47,10 +47,10 @@ const config: Config = {
           '25%': { transform: 'translateX(-5px)' },
           '75%': { transform: 'translateX(5px)' },
         },
-        fadeIn: {
-          '0%': { opacity: 0, transform: 'translate(-50%, -50%)' }, // Starts above, centered
-          '100%': { opacity: 1, transform: 'translate(-50%, 0)' },
-        },
+        // fadeIn: {
+        //   '0%': { opacity: 0, transform: 'translate(-50%, -50%)' }, // Starts above, centered
+        //   '100%': { opacity: 1, transform: 'translate(-50%, 0)' },
+        // },
       },
     },
   },

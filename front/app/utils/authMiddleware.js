@@ -1,6 +1,6 @@
 export const checkAuth = async () => {
     try {
-        const res = await fetch('http://localhost:5000/api/user/check-auth', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/user/check-auth`, {
             credentials: 'include'
         });
         return res.ok;

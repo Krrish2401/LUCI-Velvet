@@ -9,6 +9,8 @@ import { checkAuth } from "../../utils/authMiddleware";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+// const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
 export default function Login() {
     const [username, setUsername] = useState<string>("");
     const [password, setPassword] = useState<string>("");
@@ -31,7 +33,7 @@ export default function Login() {
         e.preventDefault();
         setErrors({});
         try {
-            const res = await fetch("http://localhost:5000/api/user/login", {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/user/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, password }),

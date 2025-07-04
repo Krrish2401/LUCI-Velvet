@@ -39,7 +39,7 @@ export default function Dashboard() {
 
     const fetchChats = async () => {
         try {
-            const res = await fetch("http://localhost:5000/api/chat/chats", {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/chats`, {
                 method: "GET",
                 credentials: "include"
             });
@@ -57,7 +57,7 @@ export default function Dashboard() {
         const newPinnedState = chat.pinned === 1 ? 0 : 1;
     
         try {
-            await fetch(`http://localhost:5000/api/chat/pin/${chatId}`, {
+            await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/pin/${chatId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -78,7 +78,7 @@ export default function Dashboard() {
 
     const loadChatMessages = async (chatId: number) => {
         try {
-            const res = await fetch(`http://localhost:5000/api/chat/chat/${chatId}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/chat/${chatId}`, {
                 credentials: "include"
             });
             const data = await res.json();
@@ -104,7 +104,7 @@ export default function Dashboard() {
 
     const renameChat = async (chatId: number, newTitle: string) => {
         try {
-            const res = await fetch(`http://localhost:5000/api/chat/rename/${chatId}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/rename/${chatId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
@@ -122,7 +122,7 @@ export default function Dashboard() {
 
     const deleteChat = async (chatId: number) => {
         try {
-            const res = await fetch(`http://localhost:5000/api/chat/delete/${chatId}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/delete/${chatId}`, {
                 method: "DELETE",
                 credentials: "include",
             });
@@ -191,7 +191,7 @@ export default function Dashboard() {
         setIsTyping(true);
 
         try {
-            const res = await fetch('http://localhost:5000/api/chat/message', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/message`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

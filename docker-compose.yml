@@ -1,0 +1,18 @@
+services:
+  backend:
+    build: ./back
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./back/.env
+    volumes:
+      - ./back/chatbot.db:/app/chatbot.db
+
+  frontend:
+    build: ./front
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - backend
