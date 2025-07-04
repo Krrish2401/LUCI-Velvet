@@ -8,13 +8,24 @@ import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
+type Chat = {
+    conversationId: number;
+    title: string;
+    pinned: number;
+    last_updated: string;
+};
+type Message = {
+    sender: string;
+    text: string;
+};
+
 export default function Dashboard() {
-    const [messages, setMessages] = useState<{ sender: string; text: string }[]>([]);
+    const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isTyping, setIsTyping] = useState(false);
     const [showHelp, setshowHelp] = useState(false);
-    const [chatList, setChatList] = useState<any[]>([]);
+    const [chatList, setChatList] = useState<Chat[]>([]);
     const [activeChatId, setActiveChatId] = useState<number | null>(null);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // State for sidebar collapse
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -33,10 +44,6 @@ export default function Dashboard() {
                 credentials: "include"
             });
             const data = await res.json();
-            const chatsWithPinned = data.chats.map((chat: any)=>({
-                ...chat,
-                pinned : chat.pinned || false,
-            }));
             setChatList(data.chats);
         } catch (err) {
             console.error("Failed to fetch chats:", err);
@@ -47,7 +54,7 @@ export default function Dashboard() {
         const chat = chatList.find(chat => chat.conversationId === chatId);
         if (!chat) return;
     
-        const newPinnedState = !chat.pinned;
+        const newPinnedState = chat.pinned === 1 ? 0 : 1;
     
         try {
             await fetch(`http://localhost:5000/api/chat/pin/${chatId}`, {
@@ -75,7 +82,12 @@ export default function Dashboard() {
                 credentials: "include"
             });
             const data = await res.json();
-            setMessages(data.messages.map((m: any) => ({ sender: m.sender, text: m.content })));
+            setMessages(
+                data.messages.map((m: { sender: string; content: string }) => ({
+                    sender: m.sender,
+                    text: m.content,
+                }))
+            );
             setActiveChatId(chatId);
             setshowHelp(false);
         } catch (err) {

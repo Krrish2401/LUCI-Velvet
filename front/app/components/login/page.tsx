@@ -1,7 +1,6 @@
 "use client";
 import { motion } from "motion/react";
 import { FaRobot } from "react-icons/fa";
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -118,7 +117,7 @@ export default function Login() {
                 </form>
                 <div className="mt-8 text-center">
                     <p className="text-gray-400">
-                        Don't have an account? <Link href="/components/sign-in" className="text-white underline">Register</Link>
+                        Do not have an account? <Link href="/components/sign-in" className="text-white underline">Register</Link>
                     </p>
                 </div>
             </motion.div>

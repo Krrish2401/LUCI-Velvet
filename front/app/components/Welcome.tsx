@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
+
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { FaRobot, FaGithub, FaDiscord } from "react-icons/fa";
+import { FaRobot, FaGithub } from "react-icons/fa";
 import { TypeAnimation } from 'react-type-animation';
 
 export default function Home() {
