@@ -134,7 +134,6 @@ router.get('/chats', verifyToken, async (req, res) => {
                     console.error(err);
                     return res.status(500).json({ error: 'Database error' });
                 }
-                console.log(rows[0]);
                 res.json({ chats: rows });
             }
         );
