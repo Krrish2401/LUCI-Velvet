@@ -42,4 +42,4 @@
 
 /back/node_modules
 /back/.env*
-/back/chatbot.db*
+/back/chatbot.db
