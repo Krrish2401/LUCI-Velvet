@@ -4,7 +4,7 @@ import { FaStop } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaRobot } from 'react-icons/fa';
 import { BsPersonCircle } from 'react-icons/bs';
-import { useRouter } from "next/navigation";
+// import { useRouter } from "next/navigation";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -19,7 +19,7 @@ export default function Dashboard() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const typingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const router = useRouter();
+    // const router = useRouter();
 
     useEffect(() => {
         fetchChats();
