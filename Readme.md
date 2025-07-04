@@ -27,8 +27,8 @@ A full-stack AI-powered productivity assistant built with **Next.js** (frontend)
 ### 1. Clone the Repository
 
 ```sh
-git clone https://github.com/yourusername/lucidity-chatbot.git
-cd lucidity-chatbot
+git clone https://github.com/Krrish2401/LUCI-Velvet.git
+cd LUCI-Velvet
 ```
 
 ### 2. Environment Variables
@@ -83,7 +83,8 @@ npm run dev
 From the project root:
 
 ```sh
-docker compose up --build
+docker-compose build
+docker-compose up -d
 ```
 
 - Frontend: [http://localhost:3000](http://localhost:3000)
