@@ -20,6 +20,7 @@ db.run(`
     user_id INTEGER NOT NULL,
     title TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    pinned INTEGER DEFAULT 0,
     FOREIGN KEY(user_id) REFERENCES users(id)
     )
 `);
